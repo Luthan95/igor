@@ -21,6 +21,8 @@ import com.netflix.spinnaker.igor.exceptions.UnhandledDownstreamServiceErrorExce
 import com.netflix.spinnaker.igor.scm.AbstractCommitController
 import com.netflix.spinnaker.igor.scm.bitbucket.client.BitBucketMaster
 import com.netflix.spinnaker.igor.scm.bitbucket.client.model.CompareCommitsResponse
+import com.netflix.spinnaker.kork.retrofit.exceptions.SpinnakerHttpException
+import com.netflix.spinnaker.kork.retrofit.exceptions.SpinnakerServerException
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -68,8 +70,8 @@ class CommitController extends AbstractCommitController {
       if (fromIndex > -1) {
         commitsResponse.values = commitsResponse.values.subList(0, fromIndex + 1)
       }
-    } catch (RetrofitError e) {
-      if (e.response.status == 404) {
+    } catch (SpinnakerServerException e) {
+      if ((e instanceof SpinnakerHttpException) && ((SpinnakerHttpException) e).getResponseCode()  == 404) {
         return getNotFoundCommitsResponse(projectKey, repositorySlug, requestParams.to, requestParams.from, bitBucketMaster.baseUrl)
       }
       throw new UnhandledDownstreamServiceErrorException("Unhandled bitbucket error for ${bitBucketMaster.baseUrl}", e)
