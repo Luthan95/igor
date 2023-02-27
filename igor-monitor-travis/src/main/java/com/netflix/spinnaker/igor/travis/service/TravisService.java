@@ -60,7 +60,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -444,10 +443,10 @@ public class TravisService implements BuildOperations, BuildProperties {
         travisCache.setJobLog(groupKey, jobId, v3Log.getContent());
         return Optional.of(v3Log.getContent());
       }
-    } catch (RetrofitError e) {
-      if (e.getBody() != null) {
-        try {
-          Map body = (Map) e.getBodyAs(HashMap.class);
+    } catch (SpinnakerServerException e) {
+      try {
+        Map body = (Map) e.getErrorBodyAs();
+        if (body != null) {
           if ("log_expired".equals(body.get("error_type"))) {
             log.info(
                 "{}: The log for job id {} has expired and the corresponding build was ignored",
@@ -460,11 +459,18 @@ public class TravisService implements BuildOperations, BuildProperties {
                 jobId,
                 body);
           }
-        } catch (RuntimeException ex) {
-          log.warn("{}: Could not parse original error message from Travis", groupKey, ex);
+        } else {
+          log.warn(
+              "{}: Could not get log for job id {}. Error from Travis:\n{}",
+              groupKey,
+              jobId,
+              e.getMessage());
         }
+      } catch (RuntimeException ex) {
+        log.warn("{}: Could not parse original error message from Travis", groupKey, ex);
       }
     }
+
     return Optional.empty();
   }
 
